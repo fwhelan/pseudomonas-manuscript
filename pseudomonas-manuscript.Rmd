@@ -1,0 +1,1201 @@
+---
+title: "pseudomonas-manuscript"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+An R markdown script detailing how each part of each Figure/analysis was performed for Whelan FJ, McInerney JO ``Evidence for adaptive evolutionary pressure on the microbial pangenome."
+
+Setup:
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(ggtern)
+library(data.table)
+```
+
+## Figure 1
+
+# Figure 1a
+The output of running Coinfinder as described in the Methods during the association flag. The output was subset to only include genes with a D >= -0.04 and the .gexf output was opened in Gephi and the Fruchterman Reingold Layout applied.
+
+# Figure 1b
+The output of running Coinfinder as described in the Methods during the dissociation flag. The output was subset to only include genes wit ha D >= -0.04 and the .gexf output was opened in Gephi and the Fruchterman Reingold Layout applied.
+
+# Figure 1c
+Use the gene_presence_absence.csv, _nodes.tsv, and a list of all abundant accessory genes to count the number of genes in each of the Roary-defined pangenome categories.
+```{r Figure1c}
+comp <- read.csv("gene_presence_absence.csv", header=TRUE)
+#Remove header columns
+comp.genes <- comp[15:ncol(comp)]
+#Count number of gene clusters per genome
+comp.GC.count <- as.data.frame(rowSums(comp.genes !=""))
+rownames(comp.GC.count) <- comp[,1]
+colnames(comp.GC.count) <- c("Count")
+#Generate node subset lists
+co <- read.table("coinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_nodes.tsv", sep="\t", header=TRUE)
+co <- co$ID
+av <- read.table("coinfinder_L0.05cmgfspGTRIGiU0.9F0.05_D04_nodes.tsv", sep="\t", header=TRUE)
+av <- av$ID
+all <- read.table("all-abundant-accessory-genes_nodes.tsv", sep="\t", header=TRUE)
+#Define node intersection and union
+both <- intersect(co,av)
+either <- union(co, av)
+allD <- all$ID
+#Checks
+length(co)
+length(av)
+length(both)
+length(either)
+#Subset both co-occurring and avoiding gene
+both.GC.count <- subset(comp.GC.count, rownames(comp.GC.count) %in% both)
+eith.GC.count <- subset(comp.GC.count, rownames(comp.GC.count) %in% either)
+#Subset co-occurring-only genes
+co.GC.count   <- subset(comp.GC.count, rownames(comp.GC.count) %in% co)
+coS.GC.count   <- subset(comp.GC.count, rownames(comp.GC.count) %in% setdiff(co, both))
+#Subset avoiding-only genes
+av.GC.count   <- subset(comp.GC.count, rownames(comp.GC.count) %in% av)
+avS.GC.count   <- subset(comp.GC.count, rownames(comp.GC.count) %in% setdiff(av, both))
+#Subset leftover genes
+lo.GC.count   <- subset(comp.GC.count, !(rownames(comp.GC.count) %in% union(co, av)))
+all.GC.count <- subset(comp.GC.count, rownames(comp.GC.count) %in% allD)
+#Checks
+nrow(comp.GC.count)
+nrow(both.GC.count)
+nrow(co.GC.count)
+nrow(coS.GC.count)
+nrow(av.GC.count)
+nrow(avS.GC.count)
+nrow(lo.GC.count)
+#Divide co and av genes into counts of soft core, shell etc.
+#Core genes (should be none) => (90% <= strains <= 100%)
+coremin = as.integer(0.9*209)
+coremax = as.integer(209)
+co.numcore = length(which(co.GC.count$Count > coremin & co.GC.count$Count <= coremax)) #>= coremin & co.GC.count$Count <= coremax
+coS.numcore = length(which(coS.GC.count$Count > coremin & coS.GC.count$Count <= coremax))
+av.numcore = length(which(av.GC.count$Count > coremin & av.GC.count$Count <= coremax))
+avS.numcore = length(which(avS.GC.count$Count > coremin & avS.GC.count$Count <= coremax))
+both.numcore = length(which(both.GC.count$Count > coremin & both.GC.count$Count <= coremax))
+eith.numcore = length(which(eith.GC.count$Count > coremin & eith.GC.count$Count <= coremax))
+comp.numcore = length(which(comp.GC.count$Count > coremin & comp.GC.count$Count <= coremax))
+all.numcore = length(which(all.GC.count$Count > coremin & all.GC.count$Count <= coremax))
+#Soft core genes => (89% <= strains < 90%)
+softmin = as.integer(0.89*209)
+softmax = as.integer(0.9*209)
+co.numsoft = length(which(co.GC.count$Count >= softmin & co.GC.count$Count <= softmax)) #>= softmin & co.GC.count$Count < softmax
+coS.numsoft = length(which(coS.GC.count$Count >= softmin & coS.GC.count$Count <= softmax))
+av.numsoft = length(which(av.GC.count$Count >= softmin & av.GC.count$Count <= softmax))
+avS.numsoft = length(which(avS.GC.count$Count >= softmin & avS.GC.count$Count <= softmax))
+both.numsoft =length(which(both.GC.count$Count >= softmin & both.GC.count$Count <= softmax))
+eith.numsoft =length(which(eith.GC.count$Count >= softmin & eith.GC.count$Count <= softmax))
+comp.numsoft =length(which(comp.GC.count$Count >= softmin & comp.GC.count$Count <= softmax))
+all.numsoft =length(which(all.GC.count$Count >= softmin & all.GC.count$Count <= softmax))
+#Shell genes => (15% <= strains < 89%)
+shelmin = as.integer(0.15*209)
+shelmax = as.integer(0.89*209)
+co.numshel = length(which(co.GC.count$Count >= shelmin & co.GC.count$Count < shelmax))
+coS.numshel = length(which(coS.GC.count$Count >= shelmin & coS.GC.count$Count < shelmax))
+av.numshel = length(which(av.GC.count$Count >= shelmin & av.GC.count$Count < shelmax))
+avS.numshel = length(which(avS.GC.count$Count >= shelmin & avS.GC.count$Count < shelmax))
+both.numshel = length(which(both.GC.count$Count >= shelmin & both.GC.count$Count < shelmax))
+eith.numshel = length(which(eith.GC.count$Count >= shelmin & eith.GC.count$Count < shelmax))
+comp.numshel = length(which(comp.GC.count$Count >= shelmin & comp.GC.count$Count < shelmax))
+all.numshel = length(which(all.GC.count$Count >= shelmin & all.GC.count$Count < shelmax))
+#Cloud genes => (0% <= strains < 15%)
+clodmin = as.integer(0)
+clodmax = as.integer(0.15*209)
+co.numclod = length(which(co.GC.count$Count >= clodmin & co.GC.count$Count < clodmax))
+coS.numclod = length(which(coS.GC.count$Count >= clodmin & coS.GC.count$Count < clodmax))
+av.numclod = length(which(av.GC.count$Count >= clodmin & av.GC.count$Count < clodmax))
+avS.numclod = length(which(avS.GC.count$Count >= clodmin & avS.GC.count$Count < clodmax))
+both.numclod = length(which(both.GC.count$Count >= clodmin & both.GC.count$Count < clodmax))
+eith.numclod = length(which(eith.GC.count$Count >= clodmin & eith.GC.count$Count < clodmax))
+comp.numclod = length(which(comp.GC.count$Count >= clodmin & comp.GC.count$Count < clodmax))
+all.numclod = length(which(all.GC.count$Count >= clodmin & all.GC.count$Count < clodmax))
+#Checks
+nrow(co.GC.count)
+co.numcore + co.numsoft + co.numshel + co.numclod
+nrow(coS.GC.count)
+coS.numcore + coS.numsoft + coS.numshel + coS.numclod
+nrow(av.GC.count)
+av.numcore + av.numsoft + av.numshel + av.numclod
+nrow(avS.GC.count)
+avS.numcore + avS.numsoft + avS.numshel + avS.numclod
+nrow(both.GC.count)
+both.numcore + both.numsoft + both.numshel + both.numclod
+#Plot
+genetype <- factor(c("Core genes", "Soft core genes", "Shell genes", "Cloud genes"), levels=c("Core genes", "Cloud genes", "Soft core genes","Shell genes"))
+df.freq = data.frame(c(rep("All genes", 4), rep("Associating", 4), rep("Dissociating", 4), rep("Coincident", 4)),
+                     rep(genetype, 4),
+                     c(comp.numcore,comp.numsoft,comp.numshel,comp.numclod,
+                       co.numcore,co.numsoft,co.numshel,co.numclod,
+                       av.numcore,av.numsoft,av.numshel,av.numclod,
+                       eith.numcore,eith.numsoft,eith.numshel,eith.numclod))
+rownames(df.freq) = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)
+colnames(df.freq) = c("dataset","genetype","value")
+#Add all tested genes; abundant accessory genes
+df.freq$dataset <- factor(df.freq$dataset, levels=c("All genes", "Abundant accessory genes", "Coincident", "Associating", "Dissociating"))
+df.freq[17,] <- c("Abundant accessory genes", "Core genes", all.numcore) #all core removed
+df.freq[18,] <- c("Abundant accessory genes", "Soft core genes", all.numsoft)
+df.freq[19,] <- c("Abundant accessory genes", "Shell genes", all.numshel)
+df.freq[20,] <- c("Abundant accessory genes", "Cloud genes", all.numclod) #all tested genes (13864)-74-6771
+df.freq$genetype <- factor(df.freq$genetype, levels=c("Core genes", "Cloud genes", "Soft core genes", "Shell genes"))
+df.freq$value <- as.numeric(df.freq$value)
+
+p.freq <- ggplot(data=subset(df.freq, value!=0), aes(fill=genetype,y=value,x=dataset, label=value)) +
+  geom_bar(stat="identity") +
+  scale_y_log10(expand=c(0,0)) +
+  scale_x_discrete(expand=c(0,0)) +
+  xlab("Gene cluster type") +
+  ylab("Counts (log10)") +
+  scale_fill_manual(values = c("Cloud genes" = "#004CF8",
+                               "Shell genes" = "#E3D904",
+                               "Soft core genes" = "#6CB1E7",
+                               "Core genes" = "#730047")) +
+  geom_text(size=4, position = position_stack(vjust=0.5)) +
+  guides(fill=guide_legend(title="")) +
+  theme_classic() +
+  theme(legend.position = c(0.9, 0.9))
+p.freq
+```
+
+# Figure 1d
+The outputs of running Coinfinder with both association and dissociation flags were subset to only include genes with a D >= -0.04 then combined into 1 .gexf output file using combine-gexf.py. The resulting .gexf output was opened in Gephi and the Fruchterman Reingold Layout applied.
+
+# Figure 1e
+Use the _nodes.tsv and _edges.tsv to define hub genes as those with an upper outlier number of edge connections. Plot result using the flat violin function as defined below.
+Flat violin function (from: https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R)
+```{r Flatviolin}
+library(ggplot2)
+library(dplyr)
+
+
+"%||%" <- function(a, b) {
+  if (!is.null(a)) a else b
+}
+
+geom_flat_violin <- function(mapping = NULL, data = NULL, stat = "ydensity",
+                        position = "dodge", trim = TRUE, scale = "area",
+                        show.legend = NA, inherit.aes = TRUE, ...) {
+  layer(
+    data = data,
+    mapping = mapping,
+    stat = stat,
+    geom = GeomFlatViolin,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(
+      trim = trim,
+      scale = scale,
+      ...
+    )
+  )
+}
+
+GeomFlatViolin <-
+  ggproto("GeomFlatViolin", Geom,
+          setup_data = function(data, params) {
+            data$width <- data$width %||%
+              params$width %||% (resolution(data$x, FALSE) * 0.9)
+
+            # ymin, ymax, xmin, and xmax define the bounding rectangle for each group
+            data %>%
+              group_by(group) %>%
+              mutate(ymin = min(y),
+                     ymax = max(y),
+                     xmin = x - width / 2,
+                     xmax = x)
+          },
+
+          draw_group = function(data, panel_scales, coord) {
+            # Find the points for the line to go all the way around
+            data <- transform(data, 
+                              xmaxv = x,
+                              xminv = x + violinwidth * (xmin - x))
+
+            # Make sure it's sorted properly to draw the outline
+            newdata <- rbind(plyr::arrange(transform(data, x = xminv), y),
+                             plyr::arrange(transform(data, x = xmaxv), -y))
+
+            # Close the polygon: set first and last point the same
+            # Needed for coord_polar and such
+            newdata <- rbind(newdata, newdata[1,])
+
+            ggplot2:::ggname("geom_flat_violin", GeomPolygon$draw_panel(newdata, panel_scales, coord))
+          },
+
+          draw_key = draw_key_polygon,
+
+          default_aes = aes(weight = 1, colour = "grey20", fill = "white", size = 0.5,
+                            alpha = NA, linetype = "solid"),
+
+          required_aes = c("x", "y")
+)
+```
+```{r Figure1e}
+co.nodes <- read.table("coinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_nodes.tsv", sep="\t", header=TRUE)
+co.nodes <- co.nodes$ID
+av.nodes <- read.table("coinfinder_L0.05cmgfspGTRIGiU0.9F0.05_D04_nodes.tsv", sep="\t", header=TRUE)
+av.nodes <- av.nodes$ID
+co.edges <- read.table("coinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_edges.tsv", sep="\t", header=TRUE)
+co.edges$weight <- NULL
+co.edgelist <- c(as.character(co.edges$Source), as.character(co.edges$Target))
+av.edges <- read.table("coinfinder_L0.05cmgfspGTRIGiU0.9F0.05_D04_edges.tsv", sep="\t", header=TRUE)
+av.edges$weight <- NULL
+av.edgelist <- c(as.character(av.edges$Source), as.character(av.edges$Target))
+#Define the union of associating and dissociating edges
+both.edgelist <- c(co.edgelist, av.edgelist)
+#Define association hubs
+co.count <- table(co.edgelist)
+co.cntdf <- data.frame(c(rep("Associating", length(co.count))),
+                       c(co.count))
+colnames(co.cntdf) <- c("Type", "count")
+#Colour associating gene hubs red; colour outliers
+sevfiv <- quantile(co.cntdf$count, probs=c(0.75))
+range <- IQR(co.cntdf$count) * 1.5 + sevfiv
+funct <- function(x){
+  if (x[2] >= range) {"red"}
+  else{"black"}
+  }
+co.cntdf$colour <- apply(co.cntdf, 1, funct)
+co.cntdf$names <- rownames(co.cntdf)
+#Count association hubs
+hubs <- subset(co.cntdf, co.cntdf$colour == "red")
+nrow(hubs)
+sum(hubs$count)
+sum(co.cntdf$count)
+#Count the number of edges < the lower IQR
+lows <- subset(co.cntdf, co.cntdf$count < 5)
+nrow(lows)
+sum(lows$count)
+#Define disassociation hubs
+av.count <- table(av.edgelist)
+av.cntdf <- data.frame(c(rep("Dissociating", length(av.count))),
+                       c(av.count))
+colnames(av.cntdf) <- c("Type", "count")
+#Colour dissociating gene hubs blue
+sevfiv <- quantile(av.cntdf$count, probs=c(0.75))
+range <- IQR(av.cntdf$count) * 1.5 + sevfiv
+funct <- function(x){
+  if (as.numeric(x[2]) >= range) {"blue"}
+  else{"black"}
+  }
+av.cntdf$colour <- apply(av.cntdf, 1, funct)
+av.cntdf$names <- rownames(av.cntdf)
+#Count dissociationg hubs
+hubs.blue <- subset(av.cntdf, av.cntdf$colour == "blue")
+#Define overlapping hubs
+both.count <- table(both.edgelist)
+both.cntdf <- data.frame(c(rep("Both", length(both.count))),
+                         c(both.count))
+colnames(both.cntdf) <- c("Type", "count")
+#Colour the hubs from associating/dissociating information
+funct <- function(x){
+  if( (co.cntdf[x[4],]$colour %in% c("red")) && (av.cntdf[x[4],]$colour %in% c("blue")) ) {"purple"}
+  else if(co.cntdf[x[4],]$colour %in% c("red")) {"red"}
+  else if(av.cntdf[x[4],]$colour %in% c("blue")) {"blue"}
+  else {"black"}
+}
+both.cntdf$colour <- "black"
+both.cntdf$names <- rownames(both.cntdf)
+both.cntdf$colour <- apply(both.cntdf, 1, funct)
+#Stats
+mean(co.cntdf$count)
+quantile(co.cntdf$count, probs=c(0.25, 0.75))
+sum(co.cntdf$count < 5)
+sum(co.cntdf$count > IQR(co.cntdf$count)*1.5 + 119)
+#Combine data for plotting
+al.cntdf <- rbind(co.cntdf, av.cntdf, both.cntdf)
+#Plot
+p.hubs <- ggplot(data=al.cntdf, aes(x=Type, y=count)) +
+  geom_point(position = position_jitter(width = 0.19), size = .8, alpha = 0.6, aes(color=colour)) +
+  scale_colour_manual(values= c("black" = "gray",
+                                "red" = "#E66C5B",
+                                "blue" = "#4471D0",
+                                "purple" = "purple")) +
+  geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.4) +
+  geom_flat_violin(position = position_nudge(x = -0.2, y = 0), alpha = 1.0) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  ylab("Number of gene-gene relationships") 
+p.hubs
+```
+
+## Figure 2
+
+# Figure 2a
+Create gene pair synteny output files using synteny-pairs.py; plot.
+```{r Figure2a}
+synteny.cooccur.chr <- read.table("coinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_pairs-synteny.tsv", sep="\t", header=FALSE)
+synteny.rand.chr    <- read.table("coinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_all_pairs.n357012-synteny.tsv", sep="\t", header=FALSE)
+#Rename columns
+colnames(synteny.cooccur.chr) <- c("group1", "group2", "pvalue", "obrate", "exrate", "meandist")
+colnames(synteny.rand.chr)    <- c("group1", "group2", "pvalue", "obrate", "exrate", "meandist")
+#Plot
+p.synteny.chr <- ggplot() +
+  geom_freqpoly(data=synteny.cooccur.chr, aes(x=meandist, y=..count../sum(..count..),  colour="Co-occurring, lineage dependent"), size=2) +
+  geom_freqpoly(data=synteny.rand.chr, aes(x=meandist, y=..count../sum(..count..), colour="Random subset"), size=2) +
+  scale_colour_manual(name="Gene pair types",
+                      values = c("Co-occurring, lineage dependent" = "#E66C5B",
+                                 "Random subset" = "#c1bb00"),
+                      labels = c("Co-occurring, lineage dependent" = "Associating",
+                                 "Random subset" = "Abundant accessory")) +
+  theme_bw() +
+  xlab("Mean distance between gene pairs (bp)") + ylab("Normalized gene counts") +
+  ggtitle("Distribution of distances between gene pairs") +
+  theme(legend.position=c(0.9,0.9))
+p.synteny.chr
+```
+
+# Figure 2b
+Create gene set synteny output files using synteny-sets.py; plot.
+```{r Figure2b}
+synteny <- read.table("coinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_sets-synteny.tsv", sep="\t", header=FALSE)
+synteny$V3 <- "all"
+synteny$V4 <- "gray"
+#Colour CCs of interest
+synteny[synteny$V1=="348",]$V4 <- "turquoise"
+synteny[synteny$V1=="366",]$V4 <- "black"
+synteny[synteny$V1=="43",]$V4 <- "red"
+synteny[synteny$V1=="60",]$V4 <- "pukegreen"
+#Plot
+p.syn <- ggplot(data=synteny, aes(x=V3, y=V2, colour=V4)) +
+  geom_jitter(aes(x=V3, y=V2), alpha=0.9, size=4) +
+  scale_y_continuous(limits=c(0,4000000), expand=c(0,0)) +
+  scale_colour_manual(values=c("black" = "black",
+                               "gray" = "#7F7F7F",
+                               "pukegreen" = "#A48D12",
+                               "red" = "#B1323B",
+                               "turquoise" = "#3FD7B6")) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.text.y=element_blank(), axis.ticks.y=element_blank()) +
+  xlab("") + ylab("Mean distance between genes in each CC (bp)") +
+  coord_flip()
+p.syn
+```
+
+# Figure 2c
+Panaroo was run with pre-defined clusters using roary-to-ppanggolin.py. The resulting .gexf output from Panaroo was recoloured using ppanggolin-gexf.py in order to match the node colours to the connected component colours as defined by Coinfinder and shown in Figure 1a. The resulting .gexf was opened in Gephi and visualized using ForceAtlas2 with 4000.0 Scaling and Stronger Gravity (as recommended in the Panaroo documentation).
+
+## Figure 3
+
+# Figure 3a
+Use go_term_stats.py to calculate GO Term statistics using the _edge.tsv files; plot results.
+```{r Figure3a}
+#CO-OCCUR
+#No data for x pairs: 46486 of (46486+246637=293123) = 15.9%
+#Number of overlapping GO Term pairs: 175386 / 246637 = 71.1% 
+#Number of non-overlapping GO Term pairs: 71251 / 246637 = 28.9%
+# 175386 + 71251 = 246637
+
+#AVOID
+#No data for x pairs: 41641 of (41641+379439 = 421080) = 9.89%
+#Number of overlapping GO Term pairs: 263500 / 379439 = 69.44%
+#Number of non-overlapping GO Term pairs: 115939 / 379439 = 30.56%
+#263500 + 115939 = 379439
+
+#RAND1
+#No data for x pairs: 109821 of (109821+247280=357102) = 30.8%
+#Number of overlapping KEGG pathway pairs: 125187 / 247280 = 50.6%
+#Number of non-overlapping KEGG pathway pairs: 122093 / 247280 = 49.4%
+#125187 + 122093 = 247280
+#RAND2
+#No data for x pairs: 109962 = 30.8%
+#Number of overlapping GO annotation pairs: 125113 = 50.6%
+#Number of non-overlapping GO annotation pairs: 122026 = 49.4%
+#125113 + 122026 = 247139
+#RAND3
+#No data for x pairs: 109676 = 30.7%
+#Number of overlapping GO annotation pairs: 125302 = 50.6%
+#Number of non-overlapping GO annotation pairs: 122123 = 49.4%
+#125302 + 122123 = 247425
+
+#Get data into the correct format
+go.terms.level <- data.frame(c(71.1,69.4,50.6))
+colnames(go.terms.level) <- c("overlap")
+rownames(go.terms.level) <- c("co-occur", "co-avoid", "random-pairs")
+go.terms.level
+go.terms.level$type <- rownames(go.terms.level)
+go.terms.melt <- melt(go.terms.level, id.vars="type", variable_name="variable")
+go.terms.melt$type <- factor(go.terms.melt$type, levels=c("random-pairs", "co-avoid", "co-occur"))
+#Plot
+p.gostats_general <- ggplot(data=go.terms.melt, aes(x=type, y=value, fill=type, label=value)) +
+  geom_bar(stat="identity")  +
+  geom_text(stat="identity") +
+  scale_fill_manual(values=c("co-occur" = "#E66C5B",
+                             "co-avoid" = "#4471D0",
+                             "random-pairs" = "#c1bb00")) +
+  scale_x_discrete(expand=c(0,0), labels=c("co-occur" = "Associating",
+                                           "co-avoid" = "Dissociating",
+                                           "random-pairs" = "Abundant accessory")) +
+  scale_y_continuous(expand=c(0,0)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=0, hjust=0.5)) +
+  xlab("Gene pair category") + ylab("Gene pairs with intersecting GO annotations (%)") +
+  theme(legend.position = "none") +
+  coord_flip()
+p.gostats_general
+```
+
+# Figure 3b
+Use go_term_stats.py to get a list of edges with intersecting GO Terms; use the intersecting lists of associating, dissociating, and all abundant accessory genes to determine which Terms are enriched in the coincident lists compared to all abundant accessory genes.
+```{r Figure3b}
+go.co.freq <- read.table("oinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_edges.gotermintersection.txt", sep="\t", header=FALSE, stringsAsFactors = FALSE)
+go.co.freq <- as.data.frame(table(go.co.freq$V3))
+go.av.freq <- read.table("coinfinder_L0.05cmgfspGTRIGiU0.9F0.05_D04_edges.gotermintersection.txt", sep="\t", header=FALSE, stringsAsFactors = FALSE)
+go.av.freq <- as.data.frame(table(go.av.freq$V3))
+go.al.freq <- read.table("coinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_all_pairs.gotermintersection.txt", sep="\t", header=FALSE, stringsAsFactors = FALSE)
+go.al.freq <- as.data.frame(table(go.al.freq$V3))
+#Format Freq column to match co and av data
+go.al.freq$exp <- go.al.freq$Freq / sum(go.al.freq$Freq)
+#Merge data into one table
+colnames(go.co.freq) <- c("GOTerm", "coFreq")
+colnames(go.av.freq) <- c("GOTerm", "avFreq")
+colnames(go.al.freq) <- c("GOTerm", "alFreq", "exp")
+go.freq <- merge(go.co.freq, go.av.freq, by = "GOTerm", all = TRUE)
+go.freq <- merge(go.freq, go.al.freq, by = "GOTerm", all = TRUE)
+#Set any NA's to 0
+go.freq[is.na(go.freq)] <- 0 
+#Compare the observed intersections versus the expected
+funct.co <- function(x) {
+  binom.test(x = as.numeric(x[2]), #coFreq
+             n = as.numeric(sum(go.freq$coFreq)),
+             p = as.numeric(as.numeric(x[5])), #exp
+             alternative="greater")$p.value
+}
+funct.av <- function(x) {
+  binom.test(x = as.numeric(x[3]), #avFreq
+             n = as.numeric(sum(go.freq$avFreq)),
+             p = as.numeric(as.numeric(x[5])), #exp
+             alternative="greater")$p.value
+}
+go.freq$ABinom <- apply(go.freq, 1, funct.co)
+go.freq$DBinom <- apply(go.freq, 1, funct.av)
+#Apply bonferroni correction
+bon.co <- 0.05/nrow(go.freq[go.freq$coFreq != 0,])
+bon.av <- 0.05/nrow(go.freq[go.freq$avFreq != 0,])
+sum(go.freq$ABinom < bon.co)
+sum(go.freq$DBinom < bon.av)
+#Colour by significance
+funct <- function(x) {
+  if (as.numeric(x[6]) < bon.co && as.numeric(x[7]) < bon.av) { "purple"}
+  else if (as.numeric(x[6]) < bon.co) { "red" }
+  else if (as.numeric(x[7]) < bon.av) { "blue" }
+  else{"black"}
+}
+go.freq$signf <- apply(go.freq, 1, funct)
+#Plot Ternary
+go.freq$coNorm <- go.freq$coFreq / sum(go.freq$coFreq)*100
+go.freq$avNorm <- go.freq$avFreq / sum(go.freq$avFreq)*100
+go.freq$alNorm <- go.freq$alFreq / sum(go.freq$alFreq)*100
+plot.go <- ggtern(data = go.freq, aes(x = coNorm, y = alNorm, z = avNorm, label=GOTerm)) +
+  geom_point(aes(fill = signf),
+             size = 2,
+             shape = 21,
+             color = "black") +
+  labs(x       = "Associate",
+      xarrow  = "Associate",
+      y       = "Abundant",
+      yarrow  = "Abundant accessory genes",
+      z       = "Dissociate",
+      zarrow  = "Dissociate") +
+  theme_showarrows() +
+  scale_fill_manual(values=c("black" = "black",
+                             "purple" = "#A560FF",
+                             "red" = "#E66C5B",
+                             "blue" = "#4471D0"),
+                    labels=c("black" = "Not significant",
+                             "purple" = "Both",
+                             "red" = "Associating",
+                             "blue" = "Dissociating"),
+                    name = "") +
+  theme(legend.position      = c(0,1),
+        legend.justification = c(0, 1))
+plot.go
+```
+
+# Figure 3c
+Use create_subgraph.py (as well as auxilary scripts compgen_subset-edge-list[-script].py, label_groups.py) to create node and edge output files for input into Gephi for a particular node(s) of interest.
+
+# Figure 3d
+Use the SQL database (hyp-query.txt) to obtain a list of all gene clusters annotated as hypothetical proteins; compare the _edges.tsv outputs to this list to determine whether 0, 1, or 2 of the genes per edge were classified as hypothetical; plot.
+```{r Figure3d}
+#   48036 coinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_edges-1edgeingenecluster.tsv
+#    3495 coinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_edges-2edgesingenecluster.tsv
+#  293124 coinfinder_L0.05cmgfapGTRIGiU0.9F0.05_D04_edges.tsv
+#   22897 coinfinder_L0.05cmgfspGTRIGiU0.9F0.05_D04_edges-1edgeingenecluster.tsv
+#     271 coinfinder_L0.05cmgfspGTRIGiU0.9F0.05_D04_edges-2edgesingenecluster.tsv
+#  421081 coinfinder_L0.05cmgfspGTRIGiU0.9F0.05_D04_edges.tsv
+#Define dataframe
+df <- data.frame(c(rep(c("hyp-hyp", "hyp-kwn", "kwn-kwn"),2)),
+                 c(rep("Associating",3), rep("Dissociating",3)),
+                 c(3495, 48036, (293123-3495-48036),
+                   271,22897,(421080-271-22897)))
+colnames(df) <- c("Type", "Coincident", "value")
+#Plot
+phyps <- ggplot(data=df, aes(x=Type, y=value, group=Coincident, fill=Coincident)) +
+  geom_bar(stat="identity", position="dodge") +
+  geom_text(label=df$value, position = position_dodge(0.9)) +
+  theme_classic() +
+  scale_fill_manual(values=c("Associating" = "#E66C5B",
+                             "Dissociating" = "#4471D0"),
+                    name = "Gene pair category") +
+  theme(legend.position = c(0.12,0.85)) +
+  xlab("Level of annotation within the gene pair") + ylab("# of gene-gene pairs") +
+  scale_x_discrete(labels=c("hyp-hyp" = "Hypothetical-hypothetical",
+                            "hyp-kwn" = "Hypothetical-annotated",
+                            "kwn-kwn" = "Annotated-annotated"))
+phyps
+```
+
+# Figure 3e
+Use create_subgraph.py (as well as auxilary scripts compgen_subset-edge-list[-script].py, label_groups.py) to create node and edge output files for input into Gephi for a particular node(s) of interest.
+
+## Figure 4
+
+# Figure 4a
+1. Use compgen_maptorna_Pa.py to map transcripts from publicly available SRA projects to each genome in the pseudomonas dataset.
+2. Use compgen_geneexpression.py to calculate from a bedtools genomecov file which genes (per genome) were covered by >=2 reads over >=85% of the gene length.
+3. Use compgen_geneexpression-calc.py to determine for each gene pair the proportion of genomes both are expressed in versus one of the two genes.
+4. For each SRA sample, read output of step 3 into R (below) and calculate the number of times a pair co-occurred together >75% of the time. Calculate the ratio of co-transcription vs. one-transcription in the associating and abundant accessory data. Plot results.
+```{r Figure4a}
+###Pa0_403
+genc.cooccur <- read.table("Pa0_403.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa0_403.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa0 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa0[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa0[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa0[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa0[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+###Pa0_404
+genc.cooccur <- read.table("Pa0_404.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa0_404.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa0, pa1)))
+pa <- data.frame(t(pa))
+###Pa2_449
+genc.cooccur <- read.table("Pa2_449.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa2_449.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa2_450
+genc.cooccur <- read.table("Pa2_450.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa2_450.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa2_451
+genc.cooccur <- read.table("Pa2_451.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa2_451.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa2_452
+genc.cooccur <- read.table("Pa2_452.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa2_452.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa2_453
+genc.cooccur <- read.table("Pa2_453.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa2_453.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa2_454
+genc.cooccur <- read.table("Pa2_454.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa2_454.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa2_455
+genc.cooccur <- read.table("Pa2_455.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa2_455.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa2_456
+genc.cooccur <- read.table("Pa2_456.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa2_456.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa2_457
+genc.cooccur <- read.table("Pa2_457.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa2_457.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa3_370
+genc.cooccur <- read.table("Pa3_370.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa3_370.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa3_371
+genc.cooccur <- read.table("Pa3_371.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa3_371.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa3_372
+genc.cooccur <- read.table("Pa3_372.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa3_372.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa3_373
+genc.cooccur <- read.table("Pa3_373.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa3_373.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa3_374
+genc.cooccur <- read.table("Pa3_374.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa3_374.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa3_375
+genc.cooccur <- read.table("Pa3_375.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa3_375.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa3_376
+genc.cooccur <- read.table("Pa3_376.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa3_376.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+###Pa3_377
+genc.cooccur <- read.table("Pa3_377.all.gen.ASS.stats", sep="\t", header=FALSE)
+genc.rand <- read.table("Pa3_377.all.gen.RAN.stats", sep="\t", header=FALSE)
+#Name headers
+colnames(genc.cooccur) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+colnames(genc.rand) <- c("group1", "group2", "total-occurrences", "co-occurrences", "one-occurrences")
+#Calculate how many genomes we see >=1 of the genes expressed in
+genc.cooccur$`total-rna-occurrences` <- genc.cooccur$`co-occurrences` + genc.cooccur$`one-occurrences`
+genc.rand$`total-rna-occurrences` <- genc.rand$`co-occurrences` + genc.rand$`one-occurrences`
+#Remove cases where either gene in a pair is never seen
+genc.cooccur[genc.cooccur$`total-rna-occurrences`==0,] <- NA
+genc.cooccur <- genc.cooccur[complete.cases(genc.cooccur),]
+genc.rand[genc.rand$`total-rna-occurrences`==0,] <- NA
+genc.rand <- genc.rand[complete.cases(genc.rand),]
+#Do math to get proportions, per gene
+genc.cooccur$`co-occurrence-proportional` <- genc.cooccur$`co-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`co-occurrence-proportional` <- genc.rand$`co-occurrences`/genc.rand$`total-rna-occurrences`
+genc.cooccur$`one-occurrence-proportional` <- genc.cooccur$`one-occurrences`/genc.cooccur$`total-rna-occurrences`
+genc.rand$`one-occurrence-proportional` <- genc.rand$`one-occurrences`/genc.rand$`total-rna-occurrences`
+#Build vector of results
+pa1 <- c(0,0,0,0)
+#Count the # of times pairs co-occurred >75% of the time
+pa1[1] <- nrow(genc.cooccur[genc.cooccur$`co-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[2] <- nrow(genc.rand[genc.rand$`co-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Count the # of times pairs one-occurred >75% of the time
+pa1[3] <- nrow(genc.cooccur[genc.cooccur$`one-occurrence-proportional`>0.75,])/nrow(genc.cooccur)*100
+pa1[4] <- nrow(genc.rand[genc.rand$`one-occurrence-proportional`>0.75,])/nrow(genc.rand)*100
+#Combine results
+pa <- data.frame(t(data.frame(pa, pa1)))
+pa <- data.frame(t(pa))
+#Set up data.frame
+colnames(pa) <- c("Pa0_403", "Pa0_404",
+                  "Pa2_449", "Pa2_450", "Pa2_451", "Pa2_452", "Pa2_453", "Pa2_454", "Pa2_455", "Pa2_456", "Pa2_457",
+                  "Pa3_370", "Pa3_371", "Pa3_372", "Pa3_373", "Pa3_374", "Pa3_375", "Pa3_376", "Pa3_377")
+pa$pair <- c(rep("co-occur",2), rep("rand-pairs",2))
+pa$type <- c(rep(c("co-occurring", "one-occurring"),2))
+#Melt data.frame for plotting
+pa.melt <- melt(pa, id.vars=c("type","pair"), variable_name="variable")
+rep <- 1:38
+repp <- rep(rep,2)
+srepp <- sort(repp)
+pa.melt$expt <- srepp
+pa.melt$rnaseq <- c(rep("Pa0",8), rep("Pa2",36), rep("Pa3",32))
+pa.melt$value <- as.double(pa.melt$value)
+#Calculate ratio
+ratio <- pa
+ratio[5,] <- as.double(pa[1,])/as.double(pa[2,])
+ratio[6,] <- as.double(pa[3,])/as.double(pa[4,])
+ratio <- ratio[5:6,]
+ratio$pair <- c("co-occur", "rand-pairs")
+ratio$type <- c(rep("ratio",2))
+#Melt data.frame for plotting
+ratio.melt <- melt(ratio, id.vars=c("type","pair"), variable_name="variable")
+rep <- 1:38
+ratio.melt$expt <- rep
+ratio.melt$rnaseq <- c(rep("Pa0",4), rep("Pa2",18), rep("Pa3",16))
+ratio.melt$value <- as.double(ratio.melt$value)
+#Plot
+p.genc <- ggplot(data=ratio.melt, aes(x=pair, y=value, shape=rnaseq, colour=pair)) +
+  geom_hline(yintercept=1.0, linetype=2, colour="gray") + geom_jitter(width = 0.25, size=3) +
+  ylab("Ratio of gene expression") +
+      scale_colour_manual(values=c("co-occur" = "#E66C5B",
+                             "rand-pairs" = "#c1bb00"),
+                    labels=c("co-occur" = "Associating",
+                             "rand-pairs" = "Abundant accessory")) +
+  scale_x_discrete(labels=c("co-occur" = "Associating",
+                              "rand-pairs" = "Abundant accessory")) +
+  theme_classic()
+p.genc
+```
+
+# Figure 4b
+1. BLAST the CDSs of each genome against the STRING P. aeruginosa database with >=85% coverage and >=90% sequence identify cutoffs.
+2. Use the BLAST results to assign gene cluster IDs to each STRING entry using string_to_groupID.py.
+3. Use count_string_overlap.py to determine how many edges represent interactions in the STRING database, output overlap.
+4. Plot overlap/total edge counts (as below).
+```{r Figure4b}
+#Set up data.frame
+data <- data.frame(
+  thedata = c(9.4, 1.4, 0.9), #D>=0.4 #RAND1, 2, 3= 1.3, 1.4, 1.35
+  titles = factor(c("co-occur", "random", "avoid"), levels=c("random", "avoid", "co-occur"))
+)
+#Plot
+p.str <- ggplot(data=data, aes(x=titles, y=thedata)) +
+  geom_bar(stat="identity", aes(fill=titles)) +
+    scale_fill_manual(values=c("co-occur" = "#E66C5B",
+                             "avoid" = "#4471D0",
+                             "random" = "#c1bb00")) +
+  xlab("Gene pair category") + ylab("Gene pairs with annotated protein interactions (%)") +
+  scale_x_discrete(expand=c(0,0),labels=c("avoid" = "Dissociating",
+                                           "random" = "Abundant accessory",
+                                           "co-occur" = "Associating")) +
+  scale_y_continuous(expand=c(0,0), position = "right") +
+  theme(axis.text.x = element_text(angle=0, hjust=0.5)) +
+  coord_flip() +
+  theme_classic() +
+  theme(legend.position = "none")
+p.str
+```

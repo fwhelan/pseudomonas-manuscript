@@ -1,0 +1,7 @@
+SELECT gene_cluster_id AS id, COUNT(gene_cluster_id) FROM pseudomonas.complete_genes
+WHERE name = "hypothetical protein;"
+GROUP BY gene_cluster_id
+HAVING COUNT(gene_cluster_id) = (
+	SELECT COUNT(gene_cluster_id) FROM pseudomonas.complete_genes
+	WHERE gene_cluster_id = id
+    );
